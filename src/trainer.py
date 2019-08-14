@@ -16,7 +16,7 @@ from tensorboardX import SummaryWriter
 from pathlib import Path
 
 class FaceTrainer:
-    def __init__(self, device, dataloader, backbone, head, log_dir, model_dir, batch_size, embedding_size=512):
+    def __init__(self, device, dataloader, magnitude, angular, log_dir, model_dir, batch_size, embedding_size=512):
         self.step = 0
         self.device = device
         self.batch_size = batch_size        
@@ -28,7 +28,8 @@ class FaceTrainer:
         
         print('class number: ', self.class_num)
         
-        self.model = FaceNetwork(device, backbone, head, self.class_num, embedding_size)
+        self.model = FaceNetwork(device, magnitude, angular, self.class_num, embedding_size)
+
         paras_only_bn, paras_wo_bn = separate_bn_paras(self.model)
         self.optimizer = optim.SGD([
                 {'params': paras_wo_bn[:-1], 'weight_decay':4e-5},
@@ -36,20 +37,21 @@ class FaceTrainer:
                 {'params': paras_only_bn}
             ], lr=0.1, momentum=0.9)
         
+        # For evaluation.
+        # ref: https://github.com/TreB1eN/InsightFace_Pytorch
         self.agedb_30, self.cfp_fp, self.lfw, self.agedb_30_pair, self.cfp_fp_pair, self.lfw_pair = get_val_data(Path('data/eval/'))
         self.writer = SummaryWriter(log_dir)
 
         self.board_loss_every = len(self.train_loader) // 10
         self.evaluate_every = len(self.train_loader) // 5
         self.save_every = len(self.train_loader) // 2
-        
-        print("board_frequent: ", self.board_loss_every, "eval_frequent: ", self.evaluate_every, "save_frequent: ", self.save_every)
 
     def train(self, epochs):
         self.model.train()
 
         running_loss = 0.
         for epoch in range(epochs):
+            step_in_epoch = 0
             for imgs, labels in iter(self.train_loader):
                 imgs = imgs.to(self.device)
                 labels = labels.to(self.device)
@@ -73,15 +75,12 @@ class FaceTrainer:
                 if self.step % self.evaluate_every == 0 and self.step != 0:
                     acc, best_thresh = self.evaluate(self.agedb_30, self.agedb_30_pair, self.embedding_size)
                     self.board_val('agedb_30', acc, best_thresh)
-                    print("[AgeDB-30] acc: %0.4f\t best_thresh: %0.4f" %(acc, best_thresh))
 
                     acc, best_thresh = self.evaluate(self.lfw, self.lfw_pair, self.embedding_size)
                     self.board_val('lfw', acc, best_thresh)
-                    print("[LFW] acc: %0.4f\t best_thresh: %0.4f" %(acc, best_thresh))
 
                     acc, best_thresh = self.evaluate(self.cfp_fp, self.cfp_fp_pair, self.embedding_size)
                     self.board_val('cfp_fp', acc, best_thresh)
-                    print("[CFP-FP] acc: %0.4f\t best_thresh: %0.4f" %(acc, best_thresh))
                     
                 
                 if self.step % self.save_every == 0 and self.step != 0:
@@ -96,10 +95,13 @@ class FaceTrainer:
                     for params in self.optimizer.param_groups:
                         params['lr'] /= 10
                 
-                print("[Epoch: %d\tIter: [%d/%d]\tLoss: %0.4f]" %(epoch, self.step, len(self.train_loader), loss.item()))
+                print("[Epoch: %d\tIter: [%d/%d]\tLoss: %0.4f]" %(epoch, step_in_epoch, len(self.train_loader), loss.item()))
 
                 self.step += 1
+                step_in_epoch += 1
 
+    # For evaluation.
+    # ref: https://github.com/TreB1eN/InsightFace_Pytorch
     def evaluate(self, carray, issame, embedding_size, nrof_folds=5, tta=False):
         self.model.eval()
         embeddings = np.zeros([len(carray), embedding_size])
@@ -121,7 +123,9 @@ class FaceTrainer:
         self.model.train()
         
         return acc.mean(), best_thresh.mean()
-
+    
+    # For evaluation.
+    # ref: https://github.com/TreB1eN/InsightFace_Pytorch
     def board_val(self, db_name, acc, best_thresh):
         self.writer.add_scalar('{}_accuracy'.format(db_name), acc, self.step)
         self.writer.add_scalar('{}_best_threshold'.format(db_name), best_thresh, self.step)

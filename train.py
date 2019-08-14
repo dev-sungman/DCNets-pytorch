@@ -53,7 +53,7 @@ def main(args):
     
     data_loader = FaceLoader(args.train_root, args.batch_size)
     
-    trainer = FaceTrainer(device, data_loader, args.backbone, args.head, log_dir, model_dir, args.batch_size, args.embedding_size)
+    trainer = FaceTrainer(device, data_loader, args.magnitude, args.angular, log_dir, model_dir, args.batch_size, args.embedding_size)
 
     # train using trainer
     trainer.train(args.epochs)
