@@ -5,9 +5,13 @@ import torch.nn.functional as F
 class Conv2d(nn.Module):
     def __init__(self, in_ch, out_ch, k_size, stride=1, padding=1):
         super(Conv2d, self).__init__()
+        self.in_ch = in_ch
+        self.out_ch = out_ch
         self.stride = stride
         self.padding = padding
+        self.k_size = k_size
         self.kernel = self._get_conv_filter(out_ch, in_ch, k_size)
+        self.eps = 1e-4
     
     def _get_conv_filter(self, out_ch, in_ch, k_size):
         kernel = nn.Parameter(torch.Tensor(out_ch, in_ch, k_size, k_size))
@@ -17,19 +21,31 @@ class Conv2d(nn.Module):
         return kernel
     
     def _get_filter_norm(self, kernel):
-        eps = 1e-4
         return torch.norm(kernel.data, 2, 1, True)
+    
+    def _get_input_norm(self, feat):
+        f = torch.ones(1, self.in_ch, self.k_size, self.k_size)
+        #print(feat, feat*feat)
+        input_norm = torch.sqrt(F.conv2d(feat*feat, f, stride=self.stride, padding=self.padding)+self.eps)
+        return input_norm
 
     def forward(self, x):
-        w_norm = self._get_filter_norm(self.kernel)
+        print('x : ', x)
+        print('x shape: ', x.shape)
+        x_norm = self._get_input_norm(x)
+        print('x_norm : ', x_norm)
+        print('x_norm shape: ', x_norm.shape)
         x = F.conv2d(x, self.kernel, stride=self.stride, padding=self.padding)
+        w_norm = self._get_filter_norm(self.kernel)
+        print('w_norm : ', w_norm)
+        print('w_norm shape: ', w_norm.shape) 
         return x
 
 
 class DCNet(nn.Module):
     def __init__(self):
         super(DCNet, self).__init__()
-        self.conv1 = Conv2d(3, 64, 3) 
+        self.conv1 = Conv2d(3, 3, 3) 
 
     '''
     def _get_input_norm(self, feat, kszie, stride, pad):
@@ -67,7 +83,7 @@ class DCNet(nn.Module):
 if __name__ == '__main__':
     net = DCNet()
 
-    x = torch.randn([1,3,112,112])
+    x = torch.randn([1,3,3,3])
     y = net(x)
 
 
