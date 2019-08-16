@@ -8,7 +8,7 @@ from model.arcface import Arcface
 from model.flatter import Flatter
 
 class FaceNetwork(nn.Module):
-    def __init__(self, device, backbone, head, class_num, embedding_size):
+    def __init__(self, device, magnitude, angular, class_num, embedding_size):
         super(FaceNetwork, self).__init__()
         
         self.device = device
@@ -16,11 +16,11 @@ class FaceNetwork(nn.Module):
 
         # select backbone network 
         print('backbone: ', backbone)
-        if backbone == 'vgg':
-            self.backbone = vgg19().to(self.device)
+        if magnitude == 'vgg':
+            self.magnitude = vgg19().to(self.device)
             #self.backbone = vgg19_edge().to(self.device)
         elif backbone == 'resnet':
-            self.backbone = ResNet18().to(self.device)
+            self.angular = ResNet18().to(self.device)
             #self.backbone = ResNet50().to(self.device)
 
         self.flatter = Flatter(embedding_size=embedding_size).to(self.device)
