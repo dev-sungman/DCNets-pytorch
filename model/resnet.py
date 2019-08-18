@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 class Conv2d(nn.Module):
-    def __init__(self, in_ch, out_ch, k_size, stride=1, padding=1):
+    def __init__(self, in_ch, out_ch, k_size, stride=1, padding=1, magnitude=None, angular=None):
         super(Conv2d, self).__init__()
         self.in_ch = in_ch
         self.out_ch = out_ch
@@ -27,19 +27,26 @@ class Conv2d(nn.Module):
         f = torch.ones(1, self.in_ch, self.k_size, self.k_size)
         input_norm = torch.sqrt(F.conv2d(feat*feat, f, stride=self.stride, padding=self.padding)+self.eps)
         return input_norm
+    
+    #TODO: add orthogonal constraint
+    '''
+    def _add_orthogonal_constraint(self):
+    '''
 
     def forward(self, x):
-        x_norm = self._get_input_norm(x)
-        x = F.conv2d(x, self.kernel, stride=self.stride, padding=self.padding)
+        out = F.conv2d(x, self.kernel, stride=self.stride, padding=self.padding)
         
+        x_norm = self._get_input_norm(x) 
         w_norm = self._get_filter_norm(self.kernel)
-        return x
+        
+        
+        return out
 
 
 class DCNet(nn.Module):
     def __init__(self):
         super(DCNet, self).__init__()
-        self.conv1 = Conv2d(3, 3, 3) 
+        self.conv1 = Conv2d(in_ch=3, out_ch=3, k_size=3) 
         self.bn1 = nn.BatchNorm2d(3)
         
     
