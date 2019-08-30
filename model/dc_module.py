@@ -43,19 +43,41 @@ class Conv2d(nn.Module):
             out = F.conv2d(x, self.kernel, stride=self.stride, padding=self.padding)
 
         elif self.magnitude is "ball":
-            print('magnitude function: ball convolution')
+            print('magnitude function: ', self.magnitude)
             
             x_norm = self._get_input_norm(x) 
             w_norm = self._get_filter_norm(self.kernel)
             
-            #self.kernel = torch.div(self.kernel, w_norm)
             kernel_tensor = nn.utils.parameters_to_vector(self.kernel)
             kernel_tensor = torch.reshape(kernel_tensor,self.kernel.shape)
             kernel_tensor = kernel_tensor / w_norm
+            
             out = F.conv2d(x, self.kernel, stride=self.stride, padding=self.padding)
 
             radius = nn.Parameter(torch.Tensor(1, 1, 1, out.shape[0]))
             radius = nn.init.constant_(radius, 1.0) ** 2 + self.eps
+
+            min_x_radius = torch.min(x_norm, radius)
+            print('x_norm: {}\r\nradius: {}\r\nmin_x_radius: {}'.format(x_norm, radius, min_x_radius))
+
+            out = (out / x_norm) * (min_x_radius / radius)
+
+            print('out: ', out) 
+
+            
+
+        elif self.magnitude is "linear":
+            print('magnitude function: ', self.magnitude)
+            
+            x_norm = self._get_input_norm(x) 
+            w_norm = self._get_filter_norm(self.kernel)
+            
+            kernel_tensor = nn.utils.parameters_to_vector(self.kernel)
+            kernel_tensor = torch.reshape(kernel_tensor,self.kernel.shape)
+            kernel_tensor = kernel_tensor / w_norm
+            
+            out = F.conv2d(x, self.kernel, stride=self.stride, padding=self.padding)
+
         
         return out
 
@@ -63,8 +85,8 @@ class Conv2d(nn.Module):
 class DCNet(nn.Module):
     def __init__(self):
         super(DCNet, self).__init__()
-        self.conv1 = Conv2d(in_ch=3, out_ch=3, k_size=3) 
-        #self.conv1 = Conv2d(in_ch=3, out_ch=3, k_size=3, magnitude="ball") 
+        #self.conv1 = Conv2d(in_ch=3, out_ch=3, k_size=3) 
+        self.conv1 = Conv2d(in_ch=3, out_ch=3, k_size=3, magnitude="ball") 
         self.bn1 = nn.BatchNorm2d(3)
         
     
@@ -72,7 +94,6 @@ class DCNet(nn.Module):
         x = self.conv1(x) 
         x = self.bn1(x)
         
-        print(x)
 
         return x
 
