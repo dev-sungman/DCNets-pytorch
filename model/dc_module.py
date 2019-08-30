@@ -58,13 +58,11 @@ class Conv2d(nn.Module):
             radius = nn.init.constant_(radius, 1.0) ** 2 + self.eps
 
             min_x_radius = torch.min(x_norm, radius)
-            print('x_norm: {}\r\nradius: {}\r\nmin_x_radius: {}'.format(x_norm, radius, min_x_radius))
+            #print('x_norm: {}\r\nradius: {}\r\nmin_x_radius: {}'.format(x_norm, radius, min_x_radius))
 
             out = (out / x_norm) * (min_x_radius / radius)
 
-            print('out: ', out) 
-
-            
+            #print('out: ', out) 
 
         elif self.magnitude is "linear":
             print('magnitude function: ', self.magnitude)
