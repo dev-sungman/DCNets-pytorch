@@ -6,9 +6,7 @@ import sys
 import os
 import argparse
 
-from src.utils import *
-from src.data_handler import FaceLoader
-from src.trainer import FaceTrainer
+from model.dc_module import DCNet
 
 def parse_arguments(argv):
 
@@ -17,8 +15,6 @@ def parse_arguments(argv):
     # set up root for training dataset
     parser.add_argument('--train_root', type=str, default=None)
 
-    # set up root for training dataset (masked)
-    # if you wnat to training with mask image, use this
     parser.add_argument('--epochs', type=int, default=None)
     parser.add_argument('--batch_size', type=int, default=None)
     parser.add_argument('--embedding_size', type=int, default=512)
@@ -26,37 +22,94 @@ def parse_arguments(argv):
     # set up root for saving model, log
     parser.add_argument('--save_root', type=str, default=None)
 
-    # set up training model backbone
-    # TODO: add more backbone network.
+    # set up magnitude function
     parser.add_argument('--magnitude', type=str, default='ball', choices=['ball', 'linear', 'seg'])
     
-    # set up training model head
-    # TODO: add more network head
+    # set up angular function
     parser.add_argument('--angular', type=str, default='cos', choices=['cos, sqcos'])
     
     parser.add_argument('--gpu_idx', type=str, default=0)
+    
+    parser.add_argument('--log_interval', type=int, default=10)
 
     return parser.parse_args(argv)
 
+def train(args, model, device, train_loader, optimizer, epoch):
+    model.train()
+
+    for batch_idx, (data, target) in enumerate(train_loader):
+        data, target = data.to(device), target.to(device)
+        optimizer.zero_grad()
+        output = model(data)
+        criterion = nn.CrossEntropoyLoss()
+        loss = criterion(output, target)
+        loss.backward()
+        optimizer.step()
+        if batch_idx % args.log_interval == 0:
+            print('Train Epoch: {} [{}/{} ({:.0f}%]\tLoss:{:.6f}'.format(
+                epoch, batch_idx * len(data), len(train_loader.dataset),
+                100. * batch_idx / len(train_loader), loss.item()))
+
+def test(args, model, device, test_loader):
+    model.eval()
+    test_loss = 0
+    correct = 0
+    with torch.no_grad():
+        for data, target in test_loader:
+            data, target = data.to(device), target.to(device)
+            output = model(data)
+            criterion = nn.CrossEntropyLoss()
+            test_loss += criterion(output, target)
+            pred = output.argmax(dim=1, keepdim=True)
+            correct += pred.eq(target.view_as(pred)).sum().item()
+    
+    test_loss /= len(test_loader.dataset)
+    
+    print('Test set: Average loss: {:.4f}, Acc.: {}/{} ({:.0f}%)\n'.format(
+        test_loss, correct, len(test_loader.dataset),
+        100. * correct / len(test_loader.dataset)))
+
+
 def main(args):
     
-    # check cuda availablity
-    os.environ["CUDA_VISIBLE_DEVICES"]=args.gpu_idx
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    # check cuda availabilty
+    if torch.cuda.is_available() 
+        device = 'cuda'
+        os.environ["CUDA_VISIBLE_DEVICES"]=args.gpu_idx
     
-    # make save directory
-    model_dir = args.save_root + '/model'
-    make_dir(model_dir) 
+    else 
+        device = 'cpu'
 
-    log_dir = args.save_root + '/log'
-    make_dir(log_dir)
+    # for data loader
+    train_loader = torch.utils.data.DataLoader(
+            datasets.MNIST('../data', train=True, download=True, 
+                transform=transforms.Compose([
+                    transforms.ToTensor(),
+                    transforms.Normalize((0.13,), (0.30,))
+                    ])),
+                batch_size=args.batch_size, shuffle=True, **kwargs)
     
-    data_loader = FaceLoader(args.train_root, args.batch_size)
-    
-    trainer = FaceTrainer(device, data_loader, args.magnitude, args.angular, log_dir, model_dir, args.batch_size, args.embedding_size)
+    test_loader = torch.utils.data.DataLoader(
+            datasets.MNIST('../data', train=False, 
+                transform=transforms.Compose([
+                    transforms.ToTensor(),
+                    transforms.Normalize((0.13,), (0.30))
+                    ])),
+                batch_size=args.batch_size, shuffle=True, **kwargs)
 
-    # train using trainer
-    trainer.train(args.epochs)
+    # model
+    model = DCNet().to(device)
+    
+    # optimizer
+    optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=0.9)
+
+    # train
+    for epoch in range(1, args.epochs +1):
+        train(args, model, device, train_loader, optimizer, epoch)
+        test(args, model, device, test_loader)
+
+    # save
+    torch.save(model.state_dict(), "mnist.pt")
 
 
 if __name__ == '__main__':

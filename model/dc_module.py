@@ -75,7 +75,6 @@ class Conv2d(nn.Module):
             kernel_tensor = kernel_tensor / w_norm
             
             out = F.conv2d(x, self.kernel, stride=self.stride, padding=self.padding)
-
         
         return out
 
