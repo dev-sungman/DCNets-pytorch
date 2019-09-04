@@ -37,13 +37,10 @@ class Conv2d(nn.Module):
     '''
 
     def forward(self, x):
-        
         if self.magnitude is None:
-            print('magnitude function: default')
             out = F.conv2d(x, self.kernel, stride=self.stride, padding=self.padding)
 
-        elif self.magnitude is "ball":
-            print('magnitude function: ', self.magnitude)
+        elif self.magnitude == "ball":
             
             x_norm = self._get_input_norm(x) 
             w_norm = self._get_filter_norm(self.kernel)
@@ -54,18 +51,15 @@ class Conv2d(nn.Module):
             
             out = F.conv2d(x, self.kernel, stride=self.stride, padding=self.padding)
 
-            radius = nn.Parameter(torch.Tensor(1, 1, 1, out.shape[0]))
+            radius = nn.Parameter(torch.Tensor(out.shape[0], 1, 1, 1))
             radius = nn.init.constant_(radius, 1.0) ** 2 + self.eps
-
+            
             min_x_radius = torch.min(x_norm, radius)
-            #print('x_norm: {}\r\nradius: {}\r\nmin_x_radius: {}'.format(x_norm, radius, min_x_radius))
 
             out = (out / x_norm) * (min_x_radius / radius)
 
-            #print('out: ', out) 
 
-        elif self.magnitude is "linear":
-            print('magnitude function: ', self.magnitude)
+        elif self.magnitude == "linear":
             
             x_norm = self._get_input_norm(x) 
             w_norm = self._get_filter_norm(self.kernel)
@@ -76,21 +70,39 @@ class Conv2d(nn.Module):
             
             out = F.conv2d(x, self.kernel, stride=self.stride, padding=self.padding)
         
+        else:
+            out = None
+
         return out
 
 
 class DCNet(nn.Module):
-    def __init__(self):
+    def __init__(self, magnitude, angular):
         super(DCNet, self).__init__()
-        #self.conv1 = Conv2d(in_ch=3, out_ch=3, k_size=3) 
-        self.conv1 = Conv2d(in_ch=3, out_ch=3, k_size=3, magnitude="ball") 
-        self.bn1 = nn.BatchNorm2d(3)
+        
+        self.features = nn.Sequential(
+                Conv2d(in_ch=1, out_ch=6, k_size=5, magnitude=magnitude),
+                nn.ReLU(),
+                nn.MaxPool2d(kernel_size=(2,2), stride=2),
+                Conv2d(in_ch=6, out_ch=16, k_size=5, magnitude=magnitude),
+                nn.ReLU(),
+                nn.MaxPool2d(kernel_size=(2,2), stride=2),
+                Conv2d(in_ch=16, out_ch=120, k_size=5, magnitude=magnitude),
+                nn.ReLU()
+                )
+
+        self.fc = nn.Sequential(
+                nn.Linear(1080, 512),
+                nn.ReLU(),
+                nn.Linear(512, 10),
+                )
+
         
     
     def forward(self, x):
-        x = self.conv1(x) 
-        x = self.bn1(x)
-        
+        x = self.features(x) 
+        x = x.view(x.size(0), -1)
+        x = self.fc(x)
 
         return x
 

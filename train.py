@@ -1,5 +1,9 @@
 import torch
 import torchvision
+from torchvision import datasets
+import torchvision.transforms as transforms
+from torch.utils.data import DataLoader
+import torch.optim as optim
 import torch.nn as nn
 
 import sys
@@ -17,18 +21,14 @@ def parse_arguments(argv):
 
     parser.add_argument('--epochs', type=int, default=None)
     parser.add_argument('--batch_size', type=int, default=None)
-    parser.add_argument('--embedding_size', type=int, default=512)
-
-    # set up root for saving model, log
-    parser.add_argument('--save_root', type=str, default=None)
 
     # set up magnitude function
-    parser.add_argument('--magnitude', type=str, default='ball', choices=['ball', 'linear', 'seg'])
+    parser.add_argument('--magnitude', type=str, default=None, choices=[None, 'ball', 'linear', 'seg'])
     
     # set up angular function
-    parser.add_argument('--angular', type=str, default='cos', choices=['cos, sqcos'])
+    parser.add_argument('--angular', type=str, default='cos', choices=[None, 'cos, sqcos'])
     
-    parser.add_argument('--gpu_idx', type=str, default=0)
+    parser.add_argument('--gpu_idx', type=str, default=None)
     
     parser.add_argument('--log_interval', type=int, default=10)
 
@@ -41,7 +41,7 @@ def train(args, model, device, train_loader, optimizer, epoch):
         data, target = data.to(device), target.to(device)
         optimizer.zero_grad()
         output = model(data)
-        criterion = nn.CrossEntropoyLoss()
+        criterion = nn.CrossEntropyLoss()
         loss = criterion(output, target)
         loss.backward()
         optimizer.step()
@@ -73,11 +73,11 @@ def test(args, model, device, test_loader):
 def main(args):
     
     # check cuda availabilty
-    if torch.cuda.is_available() 
+    if torch.cuda.is_available(): 
         device = 'cuda'
         os.environ["CUDA_VISIBLE_DEVICES"]=args.gpu_idx
     
-    else 
+    else:
         device = 'cpu'
 
     # for data loader
@@ -87,21 +87,22 @@ def main(args):
                     transforms.ToTensor(),
                     transforms.Normalize((0.13,), (0.30,))
                     ])),
-                batch_size=args.batch_size, shuffle=True, **kwargs)
+                batch_size=args.batch_size, shuffle=True)
     
     test_loader = torch.utils.data.DataLoader(
-            datasets.MNIST('../data', train=False, 
+            datasets.MNIST('../data', train=False, download=True, 
                 transform=transforms.Compose([
                     transforms.ToTensor(),
-                    transforms.Normalize((0.13,), (0.30))
+                    transforms.Normalize((0.13,), (0.30,))
                     ])),
-                batch_size=args.batch_size, shuffle=True, **kwargs)
-
+                batch_size=args.batch_size)
+    
+    print('magnitude function : ', args.magnitude, '\tangular function : ', args.angular)
     # model
-    model = DCNet().to(device)
+    model = DCNet(magnitude=args.magnitude, angular=args.angular).to(device)
     
     # optimizer
-    optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=0.9)
+    optimizer = optim.SGD(model.parameters(), lr=2e-3, momentum=0.9)
 
     # train
     for epoch in range(1, args.epochs +1):
