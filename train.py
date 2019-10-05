@@ -100,7 +100,7 @@ def main(args):
     print('magnitude function : ', args.magnitude, '\tangular function : ', args.angular)
     # model
     model = DCNet(magnitude=args.magnitude, angular=args.angular).to(device)
-    
+    #TODO: 모델 파라미터 확인해보기  
     # optimizer
     optimizer = optim.SGD(model.parameters(), lr=2e-3, momentum=0.9)
 
