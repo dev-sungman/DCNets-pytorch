@@ -49,7 +49,7 @@ class Conv2d(nn.Module):
             kernel_tensor = torch.reshape(kernel_tensor,self.kernel.shape)
             kernel_tensor = kernel_tensor / w_norm
             
-            out = F.conv2d(x, self.kernel, stride=self.stride, padding=self.padding)
+            out = F.conv2d(x, kernel_tensor, stride=self.stride, padding=self.padding)
 
             radius = nn.Parameter(torch.Tensor(out.shape[0], 1, 1, 1))
             radius = nn.init.constant_(radius, 1.0) ** 2 + self.eps
@@ -68,7 +68,7 @@ class Conv2d(nn.Module):
             kernel_tensor = torch.reshape(kernel_tensor,self.kernel.shape)
             kernel_tensor = kernel_tensor / w_norm
             
-            out = F.conv2d(x, self.kernel, stride=self.stride, padding=self.padding)
+            out = F.conv2d(x, kernel_tensor, stride=self.stride, padding=self.padding)
         
         else:
             out = None
@@ -96,10 +96,10 @@ class DCNet(nn.Module):
                 nn.ReLU(),
                 nn.Linear(512, 10),
                 )
-
         
     
     def forward(self, x):
+        #x = self.conv1(x)
         x = self.features(x) 
         x = x.view(x.size(0), -1)
         x = self.fc(x)
