@@ -6,19 +6,17 @@ Pytorch Implementation of the paper "Decoupled Network" .
 
 ### TODO
 
-
-
 Magnitude Function
 
 - [ ] SphereConv
-- [ ] BallConv
-- [ ] LinearConv
+- [X] BallConv
+- [X] LinearConv
 
 
 
 Angular Function
 
-- [ ] Cosine
+- [X] Cosine
 
 
 
