@@ -70,6 +70,17 @@ class Conv2d(nn.Module):
             
             out = F.conv2d(x, kernel_tensor, stride=self.stride, padding=self.padding)
         
+        elif self.magnitude == "sphere":
+            x_norm = self._get_input_norm(x) 
+            w_norm = self._get_filter_norm(self.kernel)
+            
+            kernel_tensor = nn.utils.parameters_to_vector(self.kernel)
+            kernel_tensor = torch.reshape(kernel_tensor,self.kernel.shape)
+            kernel_tensor = kernel_tensor / w_norm
+            
+            out = F.conv2d(x, kernel_tensor, stride=self.stride, padding=self.padding)
+            out = out / x_norm 
+
         else:
             out = None
 
