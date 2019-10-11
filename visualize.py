@@ -1,5 +1,5 @@
 from random import *
-import os.path
+import os
 
 def visualize_2d(data_path, num, batch_size, model, feature_size):
 
@@ -13,6 +13,7 @@ def visualize_2d(data_path, num, batch_size, model, feature_size):
     # calculate
     file_num = 0
     for i in sample_class:
+        
         file_num += len(os.listdir(data_path + '/' + class_list[i]))
 
 
