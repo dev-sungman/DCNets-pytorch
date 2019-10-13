@@ -1,30 +1,38 @@
-from random import *
+from PIL import Image
+import numpy as np
+import cv2
 import os
 
-def visualize_2d(data_path, num, batch_size, model, feature_size):
-
-    # 0. select classes for visualize
-    sample_class = [int(i) for i in range(num)]
-    
-    # 1. load data
-    data_path = os.path.abspath(data_path)
-    class_list = os.listdir(data_path)
-    
-    # calculate
-    file_num = 0
-    for i in sample_class:
+class Visualizer:
+    def __init__(self, data_path, sample_class_num, sample_num, model, embedding_size, random_class=False):
+        self.data_path = data_path
+        self.sample_class_num = sample_class_num
+        self.data = np.zeros([(sample_class_num*sample_num), (embedding_size+1)])
         
-        file_num += len(os.listdir(data_path + '/' + class_list[i]))
+        # select classes to visualize
+        # random_class : if random_class is False, classes will be selected sequentially
 
-
-    embeddings = np.zeros([file_num, feature_size])
+        if random_class is True:
+            #TODO: random sampling for select classes
+            self.sample_class = 1
+        else:
+            self.sample_class = [int(i) for i in range(sample_class_num)]
     
+    def set_sample(labels, embeddings):
+        for i in range(len(labels)):
+            if labels[i] in self.sample_class:
+                self.data[i,0] = labels[i]
+                self.data[i,1:] = embeddings
 
-    # 2. extract features
+def function_test(array):
+    print(array)
 
-    # 3. visualization using t-sne
-
-
+    mean = np.mean(array)
+    std = np.std(array)
+    
+    print(mean, std)
 
 if __name__ == '__main__':
-    visualize_2d('../datasets/faces_emore/imgs', 2, 256, 1, 512)
+    #visualize_2d('../datasets/faces_emore/imgs', 2, 256, 1, 512)
+    img = np.ones([1,1,32,32])
+    function_test(img)
