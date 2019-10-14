@@ -5,6 +5,7 @@ import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
 import torch.optim as optim
 import torch.nn as nn
+from visualize import Visualizer
 
 import sys
 import os
@@ -50,7 +51,7 @@ def train(args, model, device, train_loader, optimizer, epoch):
                 epoch, batch_idx * len(data), len(train_loader.dataset),
                 100. * batch_idx / len(train_loader), loss.item()))
 
-def test(args, model, device, test_loader):
+def test(args, model, device, test_loader, visualizer):
     model.eval()
     test_loss = 0
     correct = 0
@@ -58,6 +59,11 @@ def test(args, model, device, test_loader):
         for data, target in test_loader:
             data, target = data.to(device), target.to(device)
             output = model(data)
+            
+            embeddings = model.get_features()
+            print(embeddings)
+            visualizer.set_sample(target, embeddings)
+
             criterion = nn.CrossEntropyLoss()
             test_loss += criterion(output, target)
             pred = output.argmax(dim=1, keepdim=True)
@@ -71,7 +77,6 @@ def test(args, model, device, test_loader):
 
 
 def main(args):
-    
     # check cuda availabilty
     if torch.cuda.is_available(): 
         device = 'cuda'
@@ -82,11 +87,7 @@ def main(args):
 
     # model
     model = DCNet(magnitude=args.magnitude, angular=args.angular).to(device)
-    
-    #TODO: 모델 파라미터 확인해보기 
-    for name, param in model.named_parameters():
-        if param.requires_grad:
-            print(name)
+
     # for data loader
     train_loader = torch.utils.data.DataLoader(
             datasets.MNIST('../data', train=True, download=True, 
@@ -111,10 +112,12 @@ def main(args):
     optimizer = optim.SGD(model.parameters(), lr=2e-3, momentum=0.9)
     
     
+    visualizer = Visualizer(10, 50, model, 512)
+
     # train
     for epoch in range(1, args.epochs +1):
         train(args, model, device, train_loader, optimizer, epoch)
-        test(args, model, device, test_loader)
+        test(args, model, device, test_loader, visualizer)
 
     # save
     torch.save(model.state_dict(), "mnist.pt")

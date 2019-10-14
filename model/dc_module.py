@@ -101,23 +101,24 @@ class DCNet(nn.Module):
                 Conv2d(in_ch=16, out_ch=120, k_size=5, magnitude=magnitude),
                 nn.ReLU()
                 )
-
-        self.fc = nn.Sequential(
-                nn.Linear(1080, 512),
-                nn.ReLU(),
-                nn.Linear(512, 10),
-                )
         
+        self.fc1 = nn.Linear(1080, 512)
+        self.relu = nn.ReLU()
+        self.fc2 = nn.Linear(512, 10)
+        
+        self.embeddings = None
     
     def forward(self, x):
-        #x = self.conv1(x)
         x = self.features(x) 
         x = x.view(x.size(0), -1)
-        x = self.fc(x)
+        self.embeddings = self.fc1(x)
+        x = self.relu(self.embeddings)
+        x = self.fc2(x)
 
         return x
 
-
+    def get_features(self):
+        return self.embeddings
         
             
 if __name__ == '__main__':
