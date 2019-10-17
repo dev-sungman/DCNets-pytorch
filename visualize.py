@@ -26,18 +26,8 @@ class Visualizer:
                 self.data[self.idx,1:] = embeddings[i,:]
             self.idx += len(labels)
 
+            if self.idx > self.data.shape[0]:
+
+
         print('data setting is finished')
         print(self.data)
-
-def function_test(array):
-    print(array)
-
-    mean = np.mean(array)
-    std = np.std(array)
-    
-    print(mean, std)
-
-if __name__ == '__main__':
-    #visualize_2d('../datasets/faces_emore/imgs', 2, 256, 1, 512)
-    img = np.ones([1,1,32,32])
-    function_test(img)
