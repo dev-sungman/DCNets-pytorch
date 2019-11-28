@@ -82,25 +82,25 @@ def main(args):
 
     # for data loader
     train_loader = torch.utils.data.DataLoader(
-            datasets.MNIST('../data', train=True, download=True, 
+            datasets.CIFAR10('../data', train=True, download=True, 
                 transform=transforms.Compose([
                     transforms.ToTensor(),
-                    transforms.Normalize((0.13,), (0.30,))
+                    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
                     ])),
                 batch_size=args.batch_size, shuffle=True)
     
     test_loader = torch.utils.data.DataLoader(
-            datasets.MNIST('../data', train=False, download=True, 
+            datasets.CIFAR10('../data', train=False, download=True, 
                 transform=transforms.Compose([
                     transforms.ToTensor(),
-                    transforms.Normalize((0.13,), (0.30,))
+                    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
                     ])),
                 batch_size=args.batch_size)
     
     print('magnitude function : ', args.magnitude, '\tangular function : ', args.angular)
     # model
     model = DCNet(magnitude=args.magnitude, angular=args.angular).to(device)
-    #TODO: 모델 파라미터 확인해보기  
+    # TODO: 모델 파라미터 확인해보기  
     # optimizer
     optimizer = optim.SGD(model.parameters(), lr=2e-3, momentum=0.9)
 

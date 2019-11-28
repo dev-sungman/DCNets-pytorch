@@ -32,9 +32,16 @@ class Conv2d(nn.Module):
         return input_norm
     
     #TODO: add orthogonal constraint
-    '''
-    def _add_orthogonal_constraint(self):
-    '''
+    def get_orth_constraint(self, filt, nfilt):
+        filt = filt.view(-1, nfilt)
+
+        dot_product = torch.matmul(filt.t(), filt)
+        
+        #criterion = nn.MSELoss()
+        loss = 1e-5 * torch.norm(dot_product - torch.eye(nfilt), 2)
+        return loss
+        
+    
 
     def forward(self, x):
         if self.magnitude is None:
@@ -81,7 +88,7 @@ class DCNet(nn.Module):
         super(DCNet, self).__init__()
         
         self.features = nn.Sequential(
-                Conv2d(in_ch=1, out_ch=6, k_size=5, magnitude=magnitude),
+                Conv2d(in_ch=3, out_ch=6, k_size=5, magnitude=magnitude),
                 nn.ReLU(),
                 nn.MaxPool2d(kernel_size=(2,2), stride=2),
                 Conv2d(in_ch=6, out_ch=16, k_size=5, magnitude=magnitude),
@@ -92,12 +99,21 @@ class DCNet(nn.Module):
                 )
 
         self.fc = nn.Sequential(
-                nn.Linear(1080, 512),
+                nn.Linear(1920, 512),
                 nn.ReLU(),
                 nn.Linear(512, 10),
                 )
 
-        
+    def get_orth_loss(self):
+        loss = 0
+        for layer in self.features.named_children():
+            _layer = layer[1]
+            layer_type = str(layer[1])
+            # if layer is Conv2d, get orthogonal loss
+            if layer_type == "Conv2d()":
+                loss += _layer.get_orth_constraint(_layer.kernel, _layer.in_ch)
+
+        return loss
     
     def forward(self, x):
         x = self.features(x) 
@@ -106,13 +122,14 @@ class DCNet(nn.Module):
 
         return x
 
-
+    
         
             
 if __name__ == '__main__':
-    net = DCNet()
-
-    x = torch.randn([1,3,3,3])
+    net = DCNet(magnitude=None, angular='cos')
+    
+    x = torch.randn([3,1,27,27])
     y = net(x)
+
 
 
