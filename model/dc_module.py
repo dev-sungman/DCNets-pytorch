@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 class Conv2d(nn.Module):
-    def __init__(self, in_ch, out_ch, k_size, stride=1, padding=1, magnitude=None, angular=None):
+    def __init__(self, in_ch, out_ch, k_size, device, stride=1, padding=1, magnitude=None, angular=None):
         super(Conv2d, self).__init__()
         self.in_ch = in_ch
         self.out_ch = out_ch
@@ -12,6 +12,7 @@ class Conv2d(nn.Module):
         self.k_size = k_size
         self.kernel = self._get_conv_filter(out_ch, in_ch, k_size)
         self.eps = 1e-4
+        self.device = device
 
         self.magnitude = magnitude
         self.angular = angular
@@ -27,7 +28,7 @@ class Conv2d(nn.Module):
         return torch.norm(kernel.data, 2, 1, True)
     
     def _get_input_norm(self, feat):
-        f = torch.ones(1, self.in_ch, self.k_size, self.k_size)
+        f = torch.ones(1, self.in_ch, self.k_size, self.k_size).to(self.device)
         input_norm = torch.sqrt(F.conv2d(feat*feat, f, stride=self.stride, padding=self.padding)+self.eps)
         return input_norm
     
@@ -38,11 +39,9 @@ class Conv2d(nn.Module):
         dot_product = torch.matmul(filt.t(), filt)
         
         #criterion = nn.MSELoss()
-        loss = 1e-5 * torch.norm(dot_product - torch.eye(nfilt), 2)
+        loss = 1e-5 * torch.norm(dot_product - torch.eye(nfilt).to(self.device), 2)
         return loss
         
-    
-
     def forward(self, x):
         if self.magnitude is None:
             out = F.conv2d(x, self.kernel, stride=self.stride, padding=self.padding)
@@ -58,7 +57,7 @@ class Conv2d(nn.Module):
             
             out = F.conv2d(x, self.kernel, stride=self.stride, padding=self.padding)
 
-            radius = nn.Parameter(torch.Tensor(out.shape[0], 1, 1, 1))
+            radius = nn.Parameter(torch.Tensor(out.shape[0], 1, 1, 1)).to(self.device)
             radius = nn.init.constant_(radius, 1.0) ** 2 + self.eps
             
             min_x_radius = torch.min(x_norm, radius)
@@ -84,17 +83,17 @@ class Conv2d(nn.Module):
 
 
 class DCNet(nn.Module):
-    def __init__(self, magnitude, angular):
+    def __init__(self, magnitude, angular, device):
         super(DCNet, self).__init__()
         
         self.features = nn.Sequential(
-                Conv2d(in_ch=3, out_ch=6, k_size=5, magnitude=magnitude),
+                Conv2d(in_ch=3, out_ch=6, k_size=5, magnitude=magnitude, device=device),
                 nn.ReLU(),
                 nn.MaxPool2d(kernel_size=(2,2), stride=2),
-                Conv2d(in_ch=6, out_ch=16, k_size=5, magnitude=magnitude),
+                Conv2d(in_ch=6, out_ch=16, k_size=5, magnitude=magnitude, device=device),
                 nn.ReLU(),
                 nn.MaxPool2d(kernel_size=(2,2), stride=2),
-                Conv2d(in_ch=16, out_ch=120, k_size=5, magnitude=magnitude),
+                Conv2d(in_ch=16, out_ch=120, k_size=5, magnitude=magnitude, device=device),
                 nn.ReLU()
                 )
 
