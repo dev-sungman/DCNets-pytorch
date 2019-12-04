@@ -42,7 +42,8 @@ def train(args, model, device, train_loader, optimizer, epoch):
         optimizer.zero_grad()
         output = model(data)
         criterion = nn.CrossEntropyLoss()
-        loss = criterion(output, target) + model.get_orth_loss()
+        loss = criterion(output, target)
+        #loss = criterion(output, target) + model.get_orth_loss()
         loss.backward()
         optimizer.step()
         if batch_idx % args.log_interval == 0:
