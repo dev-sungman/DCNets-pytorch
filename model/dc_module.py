@@ -14,8 +14,9 @@ class Conv2d(nn.Module):
         self.eps = 1e-4
         self.device = device
 
-        self.radius = nn.Parameter(torch.Tensor(1, 1, 1, 1)).to(self.device)
-        self.radius = nn.init.constant_(self.radius, 1.0) ** 2 + self.eps
+        #self.radius = nn.Parameter(torch.Tensor(1, 1, 1, 1)).to(self.device)
+        #self.radius = nn.init.constant_(self.radius, 1.0) ** 2 + self.eps
+        self.radius = self._get_radius(in_ch=1)
         
         self.magnitude = magnitude
         self.angular = angular
@@ -28,6 +29,12 @@ class Conv2d(nn.Module):
 
         return kernel
     
+    def _get_radius(self, in_ch):
+        radius = nn.Parameter(torch.Tensor(in_ch, 1, 1, 1)).to(self.device)
+        radius = nn.init.constant_(radius, 1.0) ** 2 + self.eps
+
+        return radius
+
     def _get_filter_norm(self, kernel):
         return torch.norm(kernel.data, 2, 1, True)
     
@@ -60,12 +67,13 @@ class Conv2d(nn.Module):
             kernel_tensor = torch.reshape(kernel_tensor,self.kernel.shape)
             kernel_tensor = kernel_tensor / w_norm
             
+            out = F.conv2d(x, kernel_tensor, stride=self.stride, padding=self.padding)
+            
             x_norm_mean = torch.mean(x_norm)
             adj_radius = self.radius * x_norm_mean
             min_x_radius = torch.min(x_norm, adj_radius)
 
-            out = F.conv2d(x, kernel_tensor, stride=self.stride, padding=self.padding)
-            out = (min_x_radius / adj_radius)
+            out = (out / x_norm) * (min_x_radius / adj_radius)
 
         elif self.magnitude == "linear":
             

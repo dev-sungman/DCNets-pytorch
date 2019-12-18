@@ -44,7 +44,7 @@ def train(args, model, device, train_loader, optimizer, epoch):
         criterion = nn.CrossEntropyLoss()
         loss = criterion(output, target)
         #loss = criterion(output, target) + model.get_orth_loss()
-        loss.backward()
+        loss.backward(retain_graph=True)
         optimizer.step()
         if batch_idx % args.log_interval == 0:
             print('Train Epoch: {} [{}/{} ({:.0f}%]\tLoss:{:.6f}'.format(
