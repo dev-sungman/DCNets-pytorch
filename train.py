@@ -12,6 +12,7 @@ import os
 import argparse
 
 from model.dc_module import DCNet
+from visualize import Visualizer
 
 def parse_arguments(argv):
 
@@ -20,14 +21,14 @@ def parse_arguments(argv):
     # set up root for training dataset
     parser.add_argument('--train_root', type=str, default=None)
 
-    parser.add_argument('--epochs', type=int, default=1)
-    parser.add_argument('--batch_size', type=int, default=128)
+    parser.add_argument('--epochs', type=int, default=None)
+    parser.add_argument('--batch_size', type=int, default=None)
 
     # set up magnitude function
     parser.add_argument('--magnitude', type=str, default=None, choices=[None, 'ball', 'linear', 'seg'])
     
     # set up angular function
-    parser.add_argument('--angular', type=str, default='cos', choices=[None, 'cos', 'sqcos'])
+    parser.add_argument('--angular', type=str, default='cos', choices=[None, 'cos, sqcos'])
     
     parser.add_argument('--gpu_idx', type=str, default=None)
     
@@ -42,14 +43,17 @@ def train(args, model, device, train_loader, optimizer, epoch):
         data, target = data.to(device), target.to(device)
         optimizer.zero_grad()
         output = model(data)
+        print('output shape: ', output.shape)
         criterion = nn.CrossEntropyLoss()
         loss = criterion(output, target)
-        loss.backward()
+        #loss = criterion(output, target) + model.get_orth_loss()
+        loss.backward(retain_graph=True)
         optimizer.step()
         if batch_idx % args.log_interval == 0:
-            print('Train Epoch: {} [{}/{} ({:.0f})%]\tLoss:{:.6f}'.format(
+            print('Train Epoch: {} [{}/{} ({:.0f}%]\tLoss:{:.6f}'.format(
                 epoch, batch_idx * len(data), len(train_loader.dataset),
                 100. * batch_idx / len(train_loader), loss.item()))
+    
 
 def test(args, model, device, test_loader, visualizer):
     model.eval()
@@ -68,6 +72,9 @@ def test(args, model, device, test_loader, visualizer):
             test_loss += criterion(output, target)
             pred = output.argmax(dim=1, keepdim=True)
             correct += pred.eq(target.view_as(pred)).sum().item()
+
+            # for visualization
+            visualizer.visualize(output, target)
     
     test_loss /= len(test_loader.dataset)
     
@@ -85,32 +92,34 @@ def main(args):
     else:
         device = 'cpu'
 
-    # model
-    model = DCNet(magnitude=args.magnitude, angular=args.angular).to(device)
-
     # for data loader
     train_loader = torch.utils.data.DataLoader(
-            datasets.MNIST('../data', train=True, download=True, 
+            datasets.CIFAR10('../data', train=True, download=True, 
                 transform=transforms.Compose([
                     transforms.ToTensor(),
-                    transforms.Normalize((0.13,), (0.30,))
+                    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
                     ])),
                 batch_size=args.batch_size, shuffle=True)
     
     test_loader = torch.utils.data.DataLoader(
-            datasets.MNIST('../data', train=False, download=True, 
+            datasets.CIFAR10('../data', train=False, download=True, 
                 transform=transforms.Compose([
                     transforms.ToTensor(),
-                    transforms.Normalize((0.13,), (0.30,))
+                    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
                     ])),
                 batch_size=args.batch_size)
     
     print('magnitude function : ', args.magnitude, '\tangular function : ', args.angular)
     
+    # model
+    model = DCNet(magnitude=args.magnitude, angular=args.angular, device=device).to(device)
     
+    # TODO: 모델 파라미터 확인해보기  
     # optimizer
     optimizer = optim.SGD(model.parameters(), lr=2e-3, momentum=0.9)
-    
+
+    # visualize
+    visualizer = Visualizer(lr=100)
     
     visualizer = Visualizer(10, 50, model, 512)
 
@@ -121,6 +130,7 @@ def main(args):
 
     # save
     torch.save(model.state_dict(), "mnist.pt")
+    
 
 if __name__ == '__main__':
     args = parse_arguments(sys.argv[1:])
