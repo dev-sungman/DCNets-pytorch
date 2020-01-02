@@ -68,7 +68,7 @@ def test(args, model, device, test_loader, visualizer):
             correct += pred.eq(target.view_as(pred)).sum().item()
 
             # for visualization
-            visualizer.visualize(output, target)
+            visualizer.visualize(output, pred)
     
     test_loss /= len(test_loader.dataset)
     

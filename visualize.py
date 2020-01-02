@@ -12,8 +12,10 @@ class Visualizer:
         transformed = self.model.fit_transform(feature)
         
         print(transformed.shape)
-        xs = transformed[:0]
-        ys = transformed[:1]
+        xs = transformed[:,0]
+        ys = transformed[:,1]
+        
+        print(xs.shape, ys.shape)
 
         plt.scatter(xs, ys, c=labels)
 
