@@ -42,7 +42,6 @@ def train(args, model, device, train_loader, optimizer, epoch):
         data, target = data.to(device), target.to(device)
         optimizer.zero_grad()
         output = model(data)
-        print('output shape: ', output.shape)
         criterion = nn.CrossEntropyLoss()
         loss = criterion(output, target)
         #loss = criterion(output, target) + model.get_orth_loss()
